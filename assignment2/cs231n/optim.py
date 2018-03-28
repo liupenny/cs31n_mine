@@ -1,6 +1,7 @@
 import numpy as np
 
 """
+更新规则
 This file implements various first-order update rules that are commonly used
 for training neural networks. Each update rule accepts current weights and the
 gradient of the loss with respect to those weights and produces the next set of
@@ -58,7 +59,7 @@ def sgd_momentum(w, dw, config=None):
     if config is None: config = {}
     config.setdefault('learning_rate', 1e-2)
     config.setdefault('momentum', 0.9)
-    v = config.get('velocity', np.zeros_like(w))
+    v = config.get('velocity', np.zeros_like(w)) # 初速度V0
 
     next_w = None
     ###########################################################################
@@ -66,6 +67,8 @@ def sgd_momentum(w, dw, config=None):
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
     pass
+    v = config['momentum'] * v - config['learning_rate'] * dw
+    next_w = w + v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -100,6 +103,8 @@ def rmsprop(x, dx, config=None):
     # config['cache'].                                                        #
     ###########################################################################
     pass
+    config['cache'] = config['decay_rate']*config['cache'] + (1-config['decay_rate'])*(dx**2)
+    next_x = x - config['learning_rate']*dx / np.sqrt(config['cache'] + config['epsilon']) #这里有疑问：eps在课件中是在根号外面的
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -137,6 +142,12 @@ def adam(x, dx, config=None):
     # stored in config.                                                       #
     ###########################################################################
     pass
+    config['t'] += 1
+    config['m'] = config['beta1']*config['m'] + (1-config['beta1'])*dx
+    config['v'] = config['beta2']*config['v'] + (1-config['beta2'])*(dx**2)
+    mb = config['m'] / (1-config['beta1']**config['t'])
+    vb = config['v'] / (1-config['beta2']**config['t'])
+    next_x = x -config['learning_rate']*mb / (np.sqrt(vb)+config['epsilon'])
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

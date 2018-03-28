@@ -195,12 +195,14 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
     elif mode == 'test':
         #######################################################################
+        # 训练和测试使用的 BN方法不一样。使用 running 平均值和方差去正则化
         # TODO: Implement the test-time forward pass for batch normalization. #
         # Use the running mean and variance to normalize the incoming data,   #
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
         pass
+        # 这里的计算过程和上面是一致的，只不过简化了些
         scale = gamma / (np.sqrt(running_var + eps))
         out = x*scale + (beta - running_mean*scale)
         #######################################################################
