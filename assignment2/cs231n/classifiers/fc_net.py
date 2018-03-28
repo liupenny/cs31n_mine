@@ -180,16 +180,28 @@ class FullyConnectedNet(object):
         # weight_scale and biases should be initialized to zero.                   #
         #                                                                          #
         # When using batch normalization, store scale and shift parameters for the #
-        # first layer in gamma1 and beta1（γ1和β）; for the second layer use gamma2 and     #
+        # first layer in gamma1 and beta1（γ和β）; for the second layer use gamma2 and     #
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
         pass
-        
+        # 从第一层开始设置W和b
+        layer_input_dim = input_dim
+        for i,hd in enumerate(hidden_dims): 
+            self.params['W%d'%(i+1)] = weight_scale * np.random.randn(layer_input_dim,hd)
+            self.params['b%d'%(i+1)] = weight_scale * np.zeros(hd)
+            if self.use_batchnorm:
+                self.params['gamma%d'%(i+1)] = np.ones(hd)
+                self.params['beta%d'%(i+1)] = np.zeros(hd)
+            layer_input_dim = hd
+        # 设置最后一层的W b
+        self.params['W%d'%(self.num_layers)] = weight_scale * np.random.randn(layer_input_dim, num_classes)
+        self.params['b%d'%(self.num_layers)] = weight_scale * np.random.randn(num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
-
+        # dropout是指在深度学习网络的训练过程中，对于神经网络单元，按照一定的概率将其暂时从网络中丢弃。对于随机梯度下降来说，由于是随机丢弃，故而每一个mini-batch都在训练不同的网络。
+        # 使用dropout需要给出每一层的dropout概率 和 train/test 层 
         # When using dropout we need to pass a dropout_param dictionary to each
         # dropout layer so that the layer knows the dropout probability and the mode
         # (train / test). You can pass the same dropout_param to each dropout layer.
@@ -198,7 +210,7 @@ class FullyConnectedNet(object):
             self.dropout_param = {'mode': 'train', 'p': dropout}
             if seed is not None:
                 self.dropout_param['seed'] = seed
-
+        # bn的参数设置
         # With batch normalization we need to keep track of running means and
         # variances, so we need to pass a special bn_param object to each batch
         # normalization layer. You should pass self.bn_params[0] to the forward pass
@@ -221,7 +233,8 @@ class FullyConnectedNet(object):
         """
         X = X.astype(self.dtype)
         mode = 'test' if y is None else 'train'
-
+        
+        # dropout_param 和 bn_param 的参数都是 mode
         # Set train/test mode for batchnorm params and dropout param since they
         # behave differently during training and testing.
         if self.use_dropout:
@@ -232,6 +245,7 @@ class FullyConnectedNet(object):
 
         scores = None
         ############################################################################
+        # 前向传播
         # TODO: Implement the forward pass for the fully-connected net, computing  #
         # the class scores for X and storing them in the scores variable.          #
         #                                                                          #
@@ -244,6 +258,23 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
         pass
+        layer_input = X
+        ar_cache = {}
+        dp_cache = {}
+        
+        for lay in range(self.num_layers-1):
+            if self.use_batchnorm:
+                layer_input, ar_cache[lay] = affine_bn_relu_forward(layer_input, 
+                                        self.params['W%d'%(lay+1)], self.params['b%d'%(lay+1)], 
+                                        self.params['gamma%d'%(lay+1)], self.params['beta%d'%(lay+1)], self.bn_params[lay])
+            else:
+                layer_input, ar_cache[lay] = affine_relu_forward(layer_input, self.params['W%d'%(lay+1)], self.params['b%d'%(lay+1)])
+            
+            if self.use_dropout:
+                layer_input,  dp_cache[lay] = dropout_forward(layer_input, self.dropout_param)
+        
+        ar_out, ar_cache[self.num_layers] = affine_forward(layer_input, self.params['W%d'%(self.num_layers)],self.params['b%d'%(self.num_layers)])
+        scores = ar_out
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -254,6 +285,7 @@ class FullyConnectedNet(object):
 
         loss, grads = 0.0, {}
         ############################################################################
+        # 反向传播，计算梯度（softmax + l2正则）
         # TODO: Implement the backward pass for the fully-connected net. Store the #
         # loss in the loss variable and gradients in the grads dictionary. Compute #
         # data loss using softmax, and make sure that grads[k] holds the gradients #
@@ -267,6 +299,29 @@ class FullyConnectedNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         pass
+        loss, dscores = softmax_loss(scores, y)
+        dout = dscores
+        loss += 0.5*self.reg * np.sum(self.params['W%d'%(self.num_layers)]) * np.sum(self.params['W%d'%(self.num_layers)])
+        dx,dw,db = affine_backward(dout, ar_cache[self.num_layers])
+        grads['W%d'%(self.num_layers)] = dw + self.reg*self.params['W%d'%(self.num_layers)]
+        grads['b%d'%(self.num_layers)] = db
+        dout = dx
+        for idx in range(self.num_layers-1):
+            # 从倒数第二层开始往回算梯度
+            lay = self.num_layers -1 - idx -1
+            loss = loss + 0.5*self.reg * np.sum(self.params['W%d'%(lay + 1)]) * np.sum(self.params['W%d'%(lay + 1)])
+            if self.use_dropout:
+                dout = dropout_backward(dout,dp_cache[lay])
+            if self.use_batchnorm:
+                dx,dw,db,dgamma,dbeta = affine_bn_relu_backward(dout,ar_cache[lay])
+            else:
+                dx,dw,db = affine_relu_backward(dout,ar_cache[lay])
+            grads['W%d'%(lay+1)] = dw + self.reg*self.params['W%d'%(lay+1)]
+            grads['b%d'%(lay+1)] = db
+            if self.use_batchnorm:
+                grads['gamma%d'%(lay+1)] = dgamma
+                grads['beta%d'%(lay+1)] = dbeta
+            dout = dx
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

@@ -121,21 +121,22 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     """
     Forward pass for batch normalization.
 
-    During training the sample mean and (uncorrected) sample variance are
-    computed from minibatch statistics and used to normalize the incoming data.
+    During training the sample mean and (uncorrected) sample variance(方差) are
+    computed from minibatch statistics and used to normalize the incoming data（对输入数据归一化）.
     During training we also keep an exponentially decaying running mean of the
     mean and variance of each feature, and these averages are used to normalize
-    data at test-time.
+    data at test-time.（在训练过程中，我们对每个特征的均值和方差进行 指数衰减平均值。这些平均值用于标准化
+    测试数据。）
 
     At each timestep we update the running averages for mean and variance using
     an exponential decay based on the momentum parameter:
-
+    
     running_mean = momentum * running_mean + (1 - momentum) * sample_mean
     running_var = momentum * running_var + (1 - momentum) * sample_var
 
     Note that the batch normalization paper suggests a different test-time
     behavior: they compute sample mean and variance for each feature using a
-    large number of training images rather than using a running average. For
+    large number of training images rather than using a running average（运行时平均）. For
     this implementation we have chosen to use running averages instead since
     they do not require an additional estimation step; the torch7
     implementation of batch normalization also uses running averages.
@@ -146,10 +147,10 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     - beta: Shift paremeter of shape (D,)
     - bn_param: Dictionary with the following keys:
       - mode: 'train' or 'test'; required
-      - eps: Constant for numeric stability
+      - eps: Constant for numeric stability 数值稳定性
       - momentum: Constant for running mean / variance.
-      - running_mean: Array of shape (D,) giving running mean of features
-      - running_var Array of shape (D,) giving running variance of features
+      - running_mean: Array of shape (D,) giving running mean of features 特征的运行时平均
+      - running_var Array of shape (D,) giving running variance of features 特征的运行时方差 
 
     Returns a tuple of:
     - out: of shape (N, D)
@@ -170,7 +171,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # Use minibatch statistics to compute the mean and variance, use      #
         # these statistics to normalize the incoming data, and scale and      #
         # shift the normalized data using gamma and beta.                     #
-        #                                                                     #
+        # 使用SGD去计算 平均值&方差；使用这两个去 归一化输入数据； 使用γ，β去调整归一化数据。
+        # 
         # You should store the output in the variable out. Any intermediates  #
         # that you need for the backward pass should be stored in the cache   #
         # variable.                                                           #
@@ -181,6 +183,13 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variables.                                                          #
         #######################################################################
         pass
+        sample_mean = np.mean(x, axis = 0)
+        sample_var = np.var(x,axis = 0)
+        x_normalized = (x - sample_mean) / (np.sqrt(sample_var + eps))  # 减去均值，再用标准差去缩放，就能得到符合高斯分布的数据
+        out = gamma*x_normalized + beta
+        cache = (x_normalized, gamma, beta, sample_mean, sample_var, x, eps)
+        running_mean = momentum * running_mean + (1-momentum)*sample_mean # 动态均值
+        running_mean = momentum * running_var + (1-momentum)*sample_var
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -192,6 +201,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # Store the result in the out variable.                               #
         #######################################################################
         pass
+        scale = gamma / (np.sqrt(running_var + eps))
+        out = x*scale + (beta - running_mean*scale)
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -228,6 +239,19 @@ def batchnorm_backward(dout, cache):
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
     pass
+    x_normalized, gamma, beta, sample_mean, sample_var, x, eps = cache
+    N, D = x.shape
+    dx_normalized = dout * gamma
+    x_mu = x - sample_mean
+    sample_std_inv = 1.0 / np.sqrt(sample_var + eps)
+    dsample_var = -0.5*np.sum(dx_normalized * x_mu, axis = 0, keepdims = True)* sample_std_inv**3
+    dsample_mean = -1.0*np.sum(dx_normalized*sample_std_inv, axis=0, keepdims=True)-\
+                        2.0*dsample_var*np.mean(x_mu,axis=0, keepdims=True)
+    dx1 = dx_normalized * sample_std_inv
+    dx2 = 2.0/N * dsample_var*x_mu
+    dx = dx1 + dx2 + 1.0/N * dsample_mean
+    dgamma = np.sum(dout * x_normalized, axis = 0, keepdims = True)
+    dbeta = np.sum(dout, asix = 0, keepdims = True)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -258,6 +282,7 @@ def batchnorm_backward_alt(dout, cache):
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
     pass
+   
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
