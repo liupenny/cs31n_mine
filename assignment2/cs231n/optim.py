@@ -1,7 +1,7 @@
 import numpy as np
 
 """
-更新规则
+参数更新规则
 This file implements various first-order update rules that are commonly used
 for training neural networks. Each update rule accepts current weights and the
 gradient of the loss with respect to those weights and produces the next set of
@@ -104,7 +104,7 @@ def rmsprop(x, dx, config=None):
     ###########################################################################
     pass
     config['cache'] = config['decay_rate']*config['cache'] + (1-config['decay_rate'])*(dx**2)
-    next_x = x - config['learning_rate']*dx / np.sqrt(config['cache'] + config['epsilon']) #这里有疑问：eps在课件中是在根号外面的
+    next_x = x - config['learning_rate']*dx / np.sqrt(config['cache'] + config['epsilon']) #这里有疑问：eps在课件中是在根号外面的.但是结果没区别
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

@@ -2,7 +2,7 @@ pass
 from cs231n.layers import *
 from cs231n.fast_layers import *
 
-
+# 一些将 全连接、激活、BN、dropout 随机结合的网络
 def affine_relu_forward(x, w, b):
     """
     Convenience layer that perorms an affine transform followed by a ReLU
@@ -29,6 +29,25 @@ def affine_relu_backward(dout, cache):
     da = relu_backward(dout, relu_cache)
     dx, dw, db = affine_backward(da, fc_cache)
     return dx, dw, db
+
+
+def affine_bn_relu_forward(x, w, b, gamma, beta, bn_param):
+    """
+    自己加的
+    """
+    a, af_cache = affine_forward(x, w, b)
+    bn, bn_cache = batchnorm_forward(a, gamma, beta, bn_param)
+    out, relu_cache = relu_forward(bn)
+    cache = (af_cache, bn_cache, relu_cache)
+    return out,cache
+
+
+def affine_bn_relu_backward(dout, cache):
+    af_cache, bn_cache, relu_cache = cache
+    drelu = relu_backward(dout, relu_cache)
+    dbn, dgamma, dbeta = batchnorm_backward(drelu, bn_cache)
+    dx, dw, db = affine_backward(dbn, af_cache)
+    return dx,dw,db,dgamma,dbeta
 
 
 def conv_relu_forward(x, w, b, conv_param):

@@ -5,7 +5,9 @@ import numpy as np
 from cs231n.layers import *
 from cs231n.layer_utils import *
 
-
+# 具体的两种网络结构
+# 两层网络：只有最基本的 全连接层、激活
+# 全连接网络：有 全连接、激活、bn、dropout
 class TwoLayerNet(object):
     """
     A two-layer fully-connected neural network with ReLU nonlinearity and

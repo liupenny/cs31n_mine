@@ -1,7 +1,7 @@
 from builtins import range
 import numpy as np
 
-
+# 本文件里都是最简单网络的单层结构
 def affine_forward(x, w, b):
     """
     # 对全连接层计算前向结果
@@ -253,7 +253,7 @@ def batchnorm_backward(dout, cache):
     dx2 = 2.0/N * dsample_var*x_mu
     dx = dx1 + dx2 + 1.0/N * dsample_mean
     dgamma = np.sum(dout * x_normalized, axis = 0, keepdims = True)
-    dbeta = np.sum(dout, asix = 0, keepdims = True)
+    dbeta = np.sum(dout, axis = 0, keepdims = True)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -324,6 +324,8 @@ def dropout_forward(x, dropout_param):
         # Store the dropout mask in the mask variable.                        #
         #######################################################################
         pass
+        mask = (np.random.rand(*x.shape)>=p) / (1-p)  # 生成一个与x相同维度的（0,1）之间的浮点数矩阵，大于p的保留
+        out = x * mask
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -332,6 +334,7 @@ def dropout_forward(x, dropout_param):
         # TODO: Implement the test phase forward pass for inverted dropout.   #
         #######################################################################
         pass
+        out = x
         #######################################################################
         #                            END OF YOUR CODE                         #
         #######################################################################
@@ -359,6 +362,7 @@ def dropout_backward(dout, cache):
         # TODO: Implement training phase backward pass for inverted dropout   #
         #######################################################################
         pass
+        dx = dout * mask
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
